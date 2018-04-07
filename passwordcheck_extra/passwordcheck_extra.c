@@ -20,9 +20,10 @@
 #endif
 
 #include "commands/user.h"
+#include "pg_config.h"
 #include "fmgr.h"
 
-#ifndef OLD_PASSWORD_TYPE 
+#if PG_VERSION_NUM >= 100000
     #include "common/md5.h"
 #else
     #include "libpq/md5.h"
@@ -42,6 +43,7 @@ static bool password_lower_case = true;
 static bool password_upper_case = true;
 static bool password_special = true;
 static bool password_numbers = true;
+static bool password_encryption = false;
 static char *password_special_chars = "!@#$%^&*()_+{}|<>?=";
 
 /*
@@ -97,6 +99,10 @@ check_password(const char *username,
 			 *
 			 * We only check for username = password.
 			 */
+                        if( password_encryption ) 
+			    ereport(ERROR,
+		                (errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+			         errmsg("encrypted password not allowed")));
 			if (!pg_md5_encrypt(username, username, namelen, encrypted))
 				elog(ERROR, "password encryption failed");
 			if (strcmp(password, encrypted) == 0)
@@ -268,6 +274,15 @@ passwordcheck_extra_load_params(void)
 							 NULL,
 							 &password_special,
 							 true,
+							 PGC_SUSET,
+							 0, NULL, NULL, NULL);
+
+	/* Restrict use of special characters */
+	DefineCustomBoolVariable("passwordcheck_extra.restrict_encryption",
+							 "Restrict encrypted password in CREATE ROLE.",
+							 NULL,
+							 &password_encryption,
+							 false,
 							 PGC_SUSET,
 							 0, NULL, NULL, NULL);
 

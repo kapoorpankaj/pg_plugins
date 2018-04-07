@@ -8,8 +8,11 @@ SET passwordcheck_extra.special_chars TO '%$?@';
 SET passwordcheck_extra.restrict_lower TO true;
 SET passwordcheck_extra.restrict_upper TO true;
 SET passwordcheck_extra.restrict_numbers TO true;
+SET passwordcheck_extra.restrict_encryption TO true;
 
 -- Check password policy in place
+--Password encrypted
+CREATE ROLE regress_pwd_foo PASSWORD 'md5ac4bbe016b808c3c0b816981f240dcae'; 
 -- Password too short
 CREATE ROLE regress_pwd_foo PASSWORD '01234';
 -- Password too long
