@@ -81,34 +81,46 @@ check_password(const char *username,
 			   Datum validuntil_time,
 			   bool validuntil_null)
 {
-	int			namelen = strlen(username);
 	int			pwdlen = strlen(password);
-	char		encrypted[MD5_PASSWD_LEN + 1];
 	int			i;
 	int			password_flag = 0;
+	char	   *logdetail;
+	char	   encrypted[MD5_PASSWD_LEN + 1];
 
 	switch (password_type)
 	{
+		/*
+		 * Unfortunately we cannot perform exhaustive checks on encrypted
+		 * passwords - we are restricted to guessing. (Alternatively, we could
+		 * insist on the password being presented non-encrypted, but that has
+		 * its own security disadvantages.)
+		 *
+		 * We only check for username = password.
+		 */
+		#if PG_VERSION_NUM >= 100000
+		case PASSWORD_TYPE_SCRAM_SHA_256:
+		#endif
 		case PASSWORD_TYPE_MD5:
 
-			/*
-			 * Unfortunately we cannot perform exhaustive checks on encrypted
-			 * passwords - we are restricted to guessing. (Alternatively, we
-			 * could insist on the password being presented non-encrypted, but
-			 * that has its own security disadvantages.)
-			 *
-			 * We only check for username = password.
-			 */
                         if( password_encryption ) 
 			    ereport(ERROR,
 		                (errcode(ERRCODE_INVALID_PARAMETER_VALUE),
 			         errmsg("encrypted password not allowed")));
-			if (!pg_md5_encrypt(username, username, namelen, encrypted))
+
+
+		#if PG_VERSION_NUM >= 100000
+			if (plain_crypt_verify(username, password, username, &logdetail) == STATUS_OK)
+				ereport(ERROR,
+					(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+					 errmsg("password must not contain user name")));
+		#else
+			if (!pg_md5_encrypt(username, username, strlen(username), encrypted))
 				elog(ERROR, "password encryption failed");
 			if (strcmp(password, encrypted) == 0)
 				ereport(ERROR,
 						(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
 						 errmsg("password must not contain user name")));
+		#endif
 			break;
 
 		case PASSWORD_TYPE_PLAINTEXT:

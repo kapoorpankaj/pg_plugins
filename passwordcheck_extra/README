@@ -46,3 +46,5 @@ at creation with a user-defined policy:
   Default is 8, which likely sucks.
 - passwordcheck_extra.maximum_length, maximum length of password allowed.
   Default is 15, which definitely sucks, but it is useful for tests.
+- passwordcheck_extra.restrict_encryption, to enforce only plain text 
+  in CREATE ROLE.
